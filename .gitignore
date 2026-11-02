@@ -1,0 +1,20 @@
+# 机密与本地数据，绝不入库
+.env
+data/
+out/
+*.log
+*.db
+*.db-shm
+*.db-wal
+
+# 完整固件源码树太大（800MB+），开源仓库只带补丁覆盖层（firmware_patches/）
+firmware/
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+
+# 系统与工作区
+.DS_Store
+.workbuddy/

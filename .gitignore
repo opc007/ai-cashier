@@ -18,3 +18,6 @@ __pycache__/
 # 系统与工作区
 .DS_Store
 .workbuddy/
+
+# 生图工具的临时输出
+generated-images/

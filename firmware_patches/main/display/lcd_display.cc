@@ -1,4 +1,5 @@
 #include "lcd_display.h"
+#include "character/character_emotion_config.h"
 #include "assets/lang_config.h"
 #include "gif/lvgl_gif.h"
 #include "lvgl_theme.h"
@@ -19,6 +20,35 @@
 #include "board.h"
 
 #define TAG "LcdDisplay"
+
+#if XIAOZHI_LIVE2D_CHARACTER
+// 280x340 character frames are drawn 1:1 on the P4 800x480 panel. The cashier
+// ST7789 is 240x320, so scale the widget down only when the bitmap does not
+// fit. 256 is LVGL's 1x scale. Compiled only with the character module, so
+// the stock cashier build does not depend on lv_image_set_scale.
+static void FitCharacterEmoji(lv_obj_t* image, const lv_img_dsc_t* dsc, int panel_w, int panel_h) {
+    if (image == nullptr) {
+        return;
+    }
+    uint32_t zoom = 256;
+    if (dsc != nullptr && dsc->header.w > 0 && dsc->header.h > 0 && panel_w > 0 && panel_h > 0) {
+        uint32_t zoom_w = 256;
+        uint32_t zoom_h = 256;
+        if (dsc->header.w > static_cast<uint32_t>(panel_w)) {
+            zoom_w = static_cast<uint32_t>(panel_w) * 256u / dsc->header.w;
+        }
+        if (dsc->header.h > static_cast<uint32_t>(panel_h)) {
+            zoom_h = static_cast<uint32_t>(panel_h) * 256u / dsc->header.h;
+        }
+        zoom = zoom_w < zoom_h ? zoom_w : zoom_h;
+        if (zoom == 0) {
+            zoom = 1;
+        }
+        lv_image_set_pivot(image, dsc->header.w / 2, dsc->header.h / 2);
+    }
+    lv_image_set_scale(image, zoom);
+}
+#endif
 
 LV_FONT_DECLARE(BUILTIN_TEXT_FONT);
 LV_FONT_DECLARE(BUILTIN_ICON_FONT);
@@ -1231,6 +1261,9 @@ void LcdDisplay::SetEmotion(const char* emotion) {
             // Set initial frame and start animation
             lv_image_set_src(emoji_image_, gif_controller_->image_dsc());
             gif_controller_->Start();
+#if XIAOZHI_LIVE2D_CHARACTER
+            FitCharacterEmoji(emoji_image_, image->image_dsc(), width_, height_);
+#endif
 
             // Show GIF, hide others
             lv_obj_add_flag(emoji_label_, LV_OBJ_FLAG_HIDDEN);
@@ -1241,6 +1274,9 @@ void LcdDisplay::SetEmotion(const char* emotion) {
         }
     } else {
         lv_image_set_src(emoji_image_, image->image_dsc());
+#if XIAOZHI_LIVE2D_CHARACTER
+        FitCharacterEmoji(emoji_image_, image->image_dsc(), width_, height_);
+#endif
         lv_obj_add_flag(emoji_label_, LV_OBJ_FLAG_HIDDEN);
         lv_obj_remove_flag(emoji_image_, LV_OBJ_FLAG_HIDDEN);
     }
@@ -1259,6 +1295,53 @@ void LcdDisplay::SetEmotion(const char* emotion) {
         lv_obj_add_flag(emoji_label_, LV_OBJ_FLAG_HIDDEN);
     }
 #endif
+}
+
+bool LcdDisplay::SetEmojiEmotion(const char* emotion) {
+    if (emotion == nullptr || emoji_image_ == nullptr || current_theme_ == nullptr) {
+        return false;
+    }
+    auto emoji_collection = static_cast<LvglTheme*>(current_theme_)->emoji_collection();
+    auto image = emoji_collection != nullptr ? emoji_collection->GetEmojiImage(emotion) : nullptr;
+    // No collection image: do not touch the current face. The caller falls back
+    // to SetEmotion("neutral"). A font glyph for "idle"/"speaking" is not success.
+    if (image == nullptr) {
+        return false;
+    }
+
+    DisplayLockGuard lock(this);
+    if (gif_controller_) {
+        gif_controller_->Stop();
+        gif_controller_.reset();
+    }
+    bool shown = false;
+    if (image->IsGif()) {
+        gif_controller_ = std::make_unique<LvglGif>(image->image_dsc());
+        if (gif_controller_->IsLoaded()) {
+            gif_controller_->SetFrameCallback(
+                [this]() { lv_image_set_src(emoji_image_, gif_controller_->image_dsc()); });
+            lv_image_set_src(emoji_image_, gif_controller_->image_dsc());
+            gif_controller_->Start();
+#if XIAOZHI_LIVE2D_CHARACTER
+            FitCharacterEmoji(emoji_image_, image->image_dsc(), width_, height_);
+#endif
+            lv_obj_add_flag(emoji_label_, LV_OBJ_FLAG_HIDDEN);
+            lv_obj_remove_flag(emoji_image_, LV_OBJ_FLAG_HIDDEN);
+            shown = true;
+        } else {
+            ESP_LOGE(TAG, "Failed to load GIF for emotion: %s", emotion);
+            gif_controller_.reset();
+        }
+    } else {
+        lv_image_set_src(emoji_image_, image->image_dsc());
+#if XIAOZHI_LIVE2D_CHARACTER
+        FitCharacterEmoji(emoji_image_, image->image_dsc(), width_, height_);
+#endif
+        lv_obj_add_flag(emoji_label_, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_remove_flag(emoji_image_, LV_OBJ_FLAG_HIDDEN);
+        shown = true;
+    }
+    return shown;
 }
 
 void LcdDisplay::SetTheme(Theme* theme) {

@@ -1174,6 +1174,19 @@ if(NOT _font_match)
 endif()
 set(TEXT_FONT_SIZE "${CMAKE_MATCH_1}")
 set(TEXT_FONT_BPP "${CMAKE_MATCH_2}")
+# Optional 云天 / yuntian365 2D character. Default OFF: cashier emotions stay stock.
+# Enable at configure time: idf.py -DXIAOZHI_LIVE2D_CHARACTER=ON build
+# Optional collection path (the vendored assets/xiaozhi-live2d directory):
+#   -DXIAOZHI_LIVE2D_ASSET_DIR=/path/to/vendor/yuntian365-xiaozhi-live2d/live2d/assets/xiaozhi-live2d
+# Plain variables, not option()/CACHE: this file is also parsed during IDF early
+# expansion, and option() there would break the stock cashier configure.
+if(NOT DEFINED XIAOZHI_LIVE2D_CHARACTER)
+    set(XIAOZHI_LIVE2D_CHARACTER OFF)
+endif()
+if(NOT DEFINED XIAOZHI_LIVE2D_ASSET_DIR)
+    set(XIAOZHI_LIVE2D_ASSET_DIR "")
+endif()
+
 if(NOT CMAKE_BUILD_EARLY_EXPANSION)
     target_compile_definitions(${COMPONENT_LIB}
                         PRIVATE BOARD_TYPE=\"${BOARD_TYPE}\" BOARD_NAME=\"${BOARD_NAME}\"
@@ -1181,6 +1194,10 @@ if(NOT CMAKE_BUILD_EARLY_EXPANSION)
                         PRIVATE BUILTIN_TEXT_FONT=${BUILTIN_TEXT_FONT} BUILTIN_ICON_FONT=${BUILTIN_ICON_FONT}
                         PRIVATE TEXT_FONT_SIZE=${TEXT_FONT_SIZE} TEXT_FONT_BPP=${TEXT_FONT_BPP}
                         )
+    if(XIAOZHI_LIVE2D_CHARACTER)
+        target_compile_definitions(${COMPONENT_LIB} PRIVATE XIAOZHI_LIVE2D_CHARACTER=1)
+        message(STATUS "Live2D character module enabled (idle/speaking GIFs)")
+    endif()
     # ESP32-S3 LVGL builtin pool: PSRAM boards allocate it from PSRAM.
     # Boards that set CONFIG_SPIRAM=n must not keep the 1MB chip-default
     # pool as a .dram0.bss array (build.py also switches those variants
@@ -1437,6 +1454,24 @@ function(get_assets_local_file assets_source assets_local_file_var)
     set(${assets_local_file_var} ${ASSETS_LOCAL_FILE} PARENT_SCOPE)
 endfunction()
 
+
+# Stage the character collection into xiaozhi-fonts only when both the module
+# and an asset directory are set. build_default_assets.py then packs every
+# png/gif as an emoji (filename stem = emotion name). System-emotion aliases
+# and the dark skin are added by live2d/build_assets_bin.py, not by this copy.
+if(NOT CMAKE_BUILD_EARLY_EXPANSION AND XIAOZHI_LIVE2D_CHARACTER AND XIAOZHI_LIVE2D_ASSET_DIR)
+    if(NOT EXISTS "${XIAOZHI_LIVE2D_ASSET_DIR}/idle.gif")
+        message(FATAL_ERROR "XIAOZHI_LIVE2D_ASSET_DIR has no idle.gif: ${XIAOZHI_LIVE2D_ASSET_DIR}")
+    endif()
+    if(NOTO_FONTS_PATH)
+        set(_live2d_dest "${NOTO_FONTS_PATH}/png/xiaozhi-live2d")
+        file(COPY "${XIAOZHI_LIVE2D_ASSET_DIR}/" DESTINATION "${_live2d_dest}")
+        set(DEFAULT_EMOJI_COLLECTION xiaozhi-live2d)
+        message(STATUS "Live2D emoji collection staged to ${_live2d_dest}")
+    else()
+        message(WARNING "xiaozhi-fonts was not found; Live2D assets were not staged. Flash a custom assets bin instead.")
+    endif()
+endif()
 
 partition_table_get_partition_info(size "--partition-name assets" "size")
 partition_table_get_partition_info(offset "--partition-name assets" "offset")

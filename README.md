@@ -79,6 +79,10 @@ python3 -m app.admin
 见 [firmware_patches/README.md](firmware_patches/README.md)——基于 xiaozhi-esp32 v2.5.2 的补丁覆盖层，
 覆盖 `main/` 后正常编译烧录即可。设备屏幕服务地址可用 NVS `cashier/server_url` 覆盖。
 
+可选的 2D 角色帧动画和口型同步在
+[vendor/yuntian365-xiaozhi-live2d/](vendor/yuntian365-xiaozhi-live2d/README.md)
+（云天 / yuntian365，MIT，上游固件 v2.5.3）。默认关闭，不改变收银屏的表情。
+
 ### 3. 角色设定
 
 把 [prompts/cashier_role.txt](prompts/cashier_role.txt) 粘贴到小智控制台的角色设定，

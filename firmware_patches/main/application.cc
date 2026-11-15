@@ -1,6 +1,7 @@
 #include "application.h"
 #include "assets.h"
 #include "assets/lang_config.h"
+#include "character/character_emotion.h"
 #include "audio_codec.h"
 #include "board.h"
 #include "cjson_utils.h"
@@ -449,7 +450,12 @@ void Application::CheckAssetsVersion() {
     // Apply assets
     assets.Apply();
     display->SetChatMessage("system", "");
+#if XIAOZHI_LIVE2D_CHARACTER
+    // Pack asset "idle" is the breathing/blink GIF. Missing pack -> neutral.
+    SetCharacterEmotion(display, "idle");
+#else
     display->SetEmotion("robot_2");
+#endif
 }
 
 void Application::CheckNewVersion() {
@@ -683,9 +689,23 @@ void Application::InitializeProtocol() {
         } else if (strcmp(type->valuestring, "llm") == 0) {
             auto emotion = cJSON_GetObjectItem(root, "emotion");
             if (cJSON_IsString(emotion)) {
+#if XIAOZHI_LIVE2D_CHARACTER
+                Schedule([this, display, emotion_str = std::string(emotion->valuestring)]() {
+                    // Do not replace speaking.gif with a server still (often
+                    // eyes-closed), and do not call SetEmotion again per clause:
+                    // that restarts the GIF from frame 0.
+                    if (!CharacterEmotionAcceptsServerEmotion(GetDeviceState())) {
+                        ESP_LOGI(TAG, "Skip server emotion '%s' while speaking",
+                                 emotion_str.c_str());
+                        return;
+                    }
+                    display->SetEmotion(emotion_str.c_str());
+                });
+#else
                 Schedule([display, emotion_str = std::string(emotion->valuestring)]() {
                     display->SetEmotion(emotion_str.c_str());
                 });
+#endif
             }
         } else if (strcmp(type->valuestring, "mcp") == 0) {
             auto payload = cJSON_GetObjectItem(root, "payload");
@@ -779,7 +799,11 @@ void Application::DismissAlert() {
     if (GetDeviceState() == kDeviceStateIdle) {
         auto display = Board::GetInstance().GetDisplay();
         display->SetStatus(Lang::Strings::STANDBY);
+#if XIAOZHI_LIVE2D_CHARACTER
+        SetCharacterEmotion(display, "idle");
+#else
         display->SetEmotion("neutral");
+#endif
         display->SetChatMessage("system", "");
     }
 }
@@ -1026,20 +1050,32 @@ void Application::HandleStateChangedEvent() {
             if (last_error_message_.empty()) {
                 display->SetStatus(Lang::Strings::STANDBY);
                 display->ClearChatMessages();  // Clear messages first
+#if XIAOZHI_LIVE2D_CHARACTER
+                SetCharacterEmotion(display, "idle");
+#else
                 display->SetEmotion(
                     "neutral");  // Then set emotion (wechat mode checks child count)
+#endif
             }
             audio_service_.EnableVoiceProcessing(false);
             audio_service_.EnableWakeWordDetection(true);
             break;
         case kDeviceStateConnecting:
             display->SetStatus(Lang::Strings::CONNECTING);
+#if XIAOZHI_LIVE2D_CHARACTER
+            SetCharacterEmotion(display, "idle");
+#else
             display->SetEmotion("neutral");
+#endif
             display->SetChatMessage("system", "");
             break;
         case kDeviceStateListening:
             display->SetStatus(Lang::Strings::LISTENING);
+#if XIAOZHI_LIVE2D_CHARACTER
+            SetCharacterEmotion(display, "idle");
+#else
             display->SetEmotion("neutral");
+#endif
 
             // Make sure the audio processor is running
             if (play_popup_on_listening_ || !audio_service_.IsAudioProcessorRunning()) {
@@ -1058,6 +1094,9 @@ void Application::HandleStateChangedEvent() {
             break;
         case kDeviceStateSpeaking:
             display->SetStatus(Lang::Strings::SPEAKING);
+#if XIAOZHI_LIVE2D_CHARACTER
+            SetCharacterEmotion(display, "speaking");
+#endif
 
             if (listening_mode_ != kListeningModeRealtime) {
                 audio_service_.EnableVoiceProcessing(false);
@@ -1068,6 +1107,9 @@ void Application::HandleStateChangedEvent() {
             break;
         case kDeviceStateNotifying:
             display->SetStatus(Lang::Strings::SPEAKING);
+#if XIAOZHI_LIVE2D_CHARACTER
+            SetCharacterEmotion(display, "speaking");
+#endif
             audio_service_.EnableVoiceProcessing(false);
             audio_service_.EnableWakeWordDetection(audio_service_.IsAfeWakeWord());
             break;

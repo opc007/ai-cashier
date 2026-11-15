@@ -24,3 +24,8 @@ SOFTWARE.
 
 固件补丁（firmware_patches/）基于 78/xiaozhi-esp32（MIT License）修改，
 版权归原项目作者所有。
+
+2D 角色模块（vendor/yuntian365-xiaozhi-live2d/）来自 云天 / yuntian365 的
+xiaozhi-p4-dfrobot（https://gitee.com/yuntian365/xiaozhi-p4-dfrobot ，MIT）。
+该目录内的 LICENSE 与 NOTICE.md 保持上游原文。角色图由该项目提供，用于演示与二次开发。
+未包含其 firmware/c6-slave 下的第三方二进制。

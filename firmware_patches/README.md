@@ -26,8 +26,21 @@ cp -r /path/to/ai-cashier/firmware_patches/main/* main/
 | `main/greeter/`（新增） | 摄像头迎宾：本地人脸检测（ESP-SR MSR 模型），检测到顾客自动唤醒 AI；待机态能量 VAD，喊一嗓子也能唤醒；**会话守护**：顾客 30 秒没人声自动挂断，迎宾立即重新武装，解决顾客进进出出的轮换问题 |
 | `main/screen_poller/`（新增） | 每 1.5s 轮询 Mac 上的屏幕服务，有新画面就拉 RGB565 原始帧全屏常驻显示（收款二维码常驻不掉）。服务地址存 NVS `cashier/server_url`，默认 `http://<Mac 局域网IP>:8801` |
 | `main/display/display.h` `lcd_display.{h,cc}` | 新增 `SetPersistentImage`：全屏常驻显示（原 `SetPreviewImage` 5 秒自动隐藏，收款码留不住） |
-| `main/application.cc` | 启动 Greeter / ScreenPoller；状态机回调接迎宾；VAD 事件接声音迎宾 |
-| `main/CMakeLists.txt` | 注册新组件 |
+| `main/application.cc` | 启动 Greeter / ScreenPoller；状态机回调接迎宾；VAD 事件接声音迎宾。可选角色模块打开时，idle/speaking 走 GIF，说话中忽略服务端 emotion |
+| `main/character/`（新增） | 云天 2D 角色的 v2.5.2 适配：`SetCharacterEmotion`。默认不编译进行为（开关关闭） |
+| `main/display/display.h` `lcd_display.{h,cc}` | 新增 `SetEmojiEmotion`（`SetEmotion` 在 v2.5.2 仍是 `void`）。常驻画面接口不变 |
+| `main/CMakeLists.txt` | 注册新组件；`XIAOZHI_LIVE2D_CHARACTER` 默认 OFF |
+
+## 2D 角色（可选，默认关闭）
+
+来源与资源在 [`vendor/yuntian365-xiaozhi-live2d/`](../vendor/yuntian365-xiaozhi-live2d/README.md)。
+不打开开关时，开机仍是 `robot_2`，待机/聆听仍是 `neutral`，服务端 emotion 照常显示。
+
+```bash
+idf.py -DXIAOZHI_LIVE2D_CHARACTER=ON \
+  -DXIAOZHI_LIVE2D_ASSET_DIR=/path/to/ai-cashier/vendor/yuntian365-xiaozhi-live2d/live2d/assets/xiaozhi-live2d \
+  build
+```
 
 ## 已知的坑（都在代码里处理了）
 

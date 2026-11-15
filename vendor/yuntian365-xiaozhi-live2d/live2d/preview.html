@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>小智 Live2D 角色 · ESP32-P4 设备端预览</title>
+<style>
+  :root{
+    --bg:#080e1a; --card:#121c2e; --ink:#e8f2ff; --muted:#93a8c6;
+    --line:#26364f; --accent:#4b9dff; --cyan:#31d2f0;
+    --screen:#0a1220; --screen2:#101c2e;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);
+       font-family:"Segoe UI","Microsoft YaHei",system-ui,sans-serif;padding:28px 20px 40px}
+  .wrap{max-width:1240px;margin:0 auto}
+  header{display:flex;align-items:baseline;gap:14px;flex-wrap:wrap;margin-bottom:6px}
+  h1{font-size:24px;margin:0;letter-spacing:.5px}
+  .sub{color:var(--muted);font-size:13px}
+  .badge{display:inline-block;background:#12263f;color:#8dc2ff;border:1px solid #234a75;
+         border-radius:20px;padding:3px 11px;font-size:12px;font-weight:600}
+  .layout{display:grid;grid-template-columns:minmax(0,1fr) 330px;gap:20px;margin-top:20px}
+  @media(max-width:1000px){.layout{grid-template-columns:1fr}}
+
+  /* 设备外壳 + 800x480 屏幕 */
+  .device{background:linear-gradient(145deg,#2a3446,#151d2b);border-radius:22px;padding:16px;
+          box-shadow:0 18px 44px rgba(0,0,0,.45),inset 0 1px 0 rgba(255,255,255,.12)}
+  .screen{position:relative;width:100%;aspect-ratio:800/480;border-radius:10px;overflow:hidden;
+          background:radial-gradient(ellipse at 50% 30%,#14243a 0%,var(--screen) 72%);
+          border:1px solid #0a1220;color:#e8f2ff}
+  .screen::after{content:"";position:absolute;inset:0;pointer-events:none;
+          background:repeating-linear-gradient(0deg,rgba(255,255,255,.018) 0 1px,transparent 1px 3px)}
+  .statusbar{position:absolute;top:0;left:0;right:0;height:8.5%;display:flex;align-items:center;
+          justify-content:space-between;padding:0 3%;font-size:clamp(9px,1.35vw,13px);color:#9fc4e8;
+          border-bottom:1px solid rgba(120,180,230,.13)}
+  .statusbar b{color:#dcefff;font-weight:600}
+  .dots{display:flex;gap:5px;align-items:center}
+  .dot{width:6px;height:6px;border-radius:50%;background:#4b9dff;box-shadow:0 0 8px #4b9dff}
+  .dot.dim{background:#3a4a60;box-shadow:none}
+  .role{position:absolute;left:50%;bottom:12%;transform:translateX(-50%);
+        width:35%;min-width:180px;display:flex;justify-content:center;align-items:flex-end}
+  .role img{width:100%;height:auto;display:block;
+        filter:drop-shadow(0 10px 26px rgba(0,0,0,.5)) drop-shadow(0 0 18px rgba(60,200,255,.14))}
+  .emotion-tag{position:absolute;left:3%;bottom:11%;font-size:clamp(9px,1.25vw,12px);
+        color:#8fb6dd;letter-spacing:1px;text-transform:uppercase}
+  .emotion-tag span{display:block;color:#e7f4ff;font-size:clamp(11px,1.6vw,15px);
+        font-weight:600;letter-spacing:0;text-transform:none;margin-top:3px}
+  .caption{position:absolute;left:50%;bottom:3.5%;transform:translateX(-50%);
+        width:78%;text-align:center;padding:2.1% 3%;border-radius:9px;
+        background:rgba(10,20,36,.72);border:1px solid rgba(100,170,225,.2);
+        font-size:clamp(10px,1.6vw,15px);color:#dcecff;backdrop-filter:blur(6px)}
+  .glow{position:absolute;left:50%;top:44%;width:46%;height:60%;transform:translate(-50%,-50%);
+        background:radial-gradient(ellipse,rgba(40,160,220,.16),transparent 70%);pointer-events:none}
+
+  /* 右侧控制面板 */
+  .panel{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:18px;
+         box-shadow:0 8px 24px rgba(0,0,0,.30)}
+  .panel h2{font-size:14px;margin:0 0 4px;letter-spacing:.3px}
+  .hint{font-size:12px;color:var(--muted);line-height:1.6;margin:0 0 14px}
+  .group-title{font-size:11px;color:var(--muted);letter-spacing:1.2px;text-transform:uppercase;
+               margin:16px 0 8px;font-weight:700}
+  .grid{display:grid;grid-template-columns:repeat(3,1fr);gap:7px}
+  button{font:inherit;font-size:12px;padding:8px 4px;border-radius:8px;cursor:pointer;
+         border:1px solid var(--line);background:#17243a;color:#cbdcf2;transition:.16s}
+  button:hover{border-color:#4b9dff;background:#1d3352;color:#8dc2ff}
+  button.on{background:var(--accent);border-color:var(--accent);color:#fff;
+            box-shadow:0 4px 12px rgba(47,125,225,.3)}
+  button.anim{background:#102c3a;border-color:#1f5d72;color:#5fdcf5;font-weight:600}
+  button.anim.on{background:var(--cyan);border-color:var(--cyan);color:#fff}
+  .meta{margin-top:16px;padding:12px;border-radius:10px;background:#101c2e;
+        border:1px solid var(--line);font-size:12px;line-height:1.8;color:#c0d2ea}
+  .meta code{background:#1c2e49;padding:1px 5px;border-radius:4px;font-size:11px;color:#8dc2ff}
+  .auto{display:flex;align-items:center;gap:8px;margin-top:14px;font-size:12px;color:var(--muted)}
+  .auto input{accent-color:var(--accent);width:15px;height:15px}
+
+  .notes{margin-top:20px;background:var(--card);border:1px solid var(--line);border-radius:16px;
+         padding:18px 22px;font-size:13px;line-height:1.85;color:#c0d2ea}
+  .notes h3{font-size:14px;margin:0 0 8px;color:var(--ink)}
+  .notes code{background:#1c2e49;padding:2px 6px;border-radius:4px;font-size:12px;color:#8dc2ff}
+  .notes ul{margin:6px 0 0;padding-left:20px}
+  .kpi{display:flex;gap:22px;flex-wrap:wrap;margin-top:12px;padding-top:12px;border-top:1px solid var(--line)}
+  .kpi div{font-size:12px;color:var(--muted)}
+  .kpi b{display:block;font-size:18px;color:var(--ink);font-weight:700;margin-bottom:2px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>小智 Live2D 角色</h1>
+    <span class="badge">ESP32-P4 / 800×480 DSI</span>
+    <span class="badge" style="background:#102c3a;border-color:#1f5d72;color:#5fdcf5">肢体动作版 v9</span>
+    <span class="sub">设备端表情资源预览 · 银白发 AI 少女「小智」</span>
+  </header>
+  <div class="sub" style="margin-top:6px">下面是按真实 800×480 屏幕比例模拟的显示效果；角色资源按原尺寸 280×340 居中渲染，与固件 LVGL 行为一致。v9 起动画加入连续网格变形（头摆 / 发梢 / 双臂 / 胸腔呼吸），不再是整图缩放。</div>
+
+  <div class="layout">
+    <div class="device">
+      <div class="screen">
+        <div class="statusbar">
+          <div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot dim"></i>
+            &nbsp;<b>小智 AI</b> &nbsp;·&nbsp; v2.5.3</div>
+          <div>Wi-Fi &nbsp;● &nbsp; 10:39</div>
+        </div>
+        <div class="glow"></div>
+        <div class="role"><img id="role" src="assets/xiaozhi-live2d/idle.gif" alt="小智角色"></div>
+        <div class="emotion-tag">emotion<span id="emoName">idle</span></div>
+        <div class="caption" id="caption">你好，我是小智～有什么可以帮你的吗？</div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h2>表情切换</h2>
+      <p class="hint">点击任意表情，模拟服务器下发 <code>emotion</code> 字段时固件 <code>SetEmotion()</code> 的显示结果。</p>
+
+      <div class="group-title">待机 / 动画</div>
+      <div class="grid" id="animGrid"></div>
+
+      <div class="group-title">情绪表情（21）</div>
+      <div class="grid" id="emoGrid"></div>
+
+      <label class="auto"><input type="checkbox" id="autoPlay"> 自动轮播演示</label>
+
+      <div class="meta" id="meta">
+        当前：<code>idle.gif</code><br>
+        尺寸：280 × 340 · RGBA / 透明 GIF<br>
+        触发：<code>SetEmotion("idle")</code>
+      </div>
+    </div>
+  </div>
+
+  <div class="notes">
+    <h3>资源与集成要点</h3>
+    <ul>
+      <li>资源目录 <code>assets/xiaozhi-live2d/</code>：21 个 RGBA PNG 静帧 + 3 个透明 GIF 动画（idle 20 帧 / speaking 12 帧 / happy_anim 14 帧，均 90 ms、共 46 帧），文件名即 emotion 关键字；<code>index.json</code> 有 31 个条目（24 个角色资源 + 7 个系统弹窗别名）。</li>
+      <li><b>v9 肢体动作</b>：<code>make_live2d.py</code> 的 <code>pose_warp()</code> 用高斯权重场构造头部、左右发梢、双臂、胸腔的局部位移，再以 <code>cv2.remap</code> 对整张 RGBA 做连续重采样；各部位用不同频率/相位的正弦叠加（头 <code>sin(p)</code>、发梢 <code>sin(p+1.2)</code>、手臂 <code>sin(0.75p+2.1)</code>、胸腔 <code>0.5-0.5cos(p)</code>），避免同步运动造成机械感，底边锚定防透明缝。</li>
+      <li>体积控制：固定 96 色调色板 + <code>dither=0</code>、位移软阈值 0.12 归零静止区域、取消全局 sway；否则帧间差分过大会让 GIF 从 1.35 MB 涨到 2.17 MB 并撑爆 8 MB 分区。</li>
+      <li>打包脚本 <code>build_assets_bin.py</code> 在现有 <code>generated_assets.bin</code> 上只替换表情条目，保留字体与语音模型，输出 <code>xiaozhi-live2d-assets.bin</code>。</li>
+      <li>烧录：menuconfig 选 <code>Flash Custom Assets</code>，把 <code>CUSTOM_ASSETS_FILE</code> 指向该 bin；或直接走 OTA 下发 assets 包，<b>无需改动任何 C++ 代码</b>。</li>
+      <li>若想随固件一起编译：把资源目录拷到 <code>managed_components/78__xiaozhi-fonts/png/xiaozhi-live2d/</code>，再把 <code>main/CMakeLists.txt</code> 的 <code>DEFAULT_EMOJI_COLLECTION</code> 改成 <code>xiaozhi-live2d</code>。</li>
+      <li><code>idle</code> / <code>speaking</code> 是新增关键字，<b>已经写进固件状态机</b>：<code>application.cc</code> 的 <code>HandleStateChangedEvent()</code> 在待机 / 连接 / 聆听时播 <code>idle</code>，说话 / 播报时播 <code>speaking</code>；说话状态下忽略服务端下发的 emotion，避免 GIF 被静帧覆盖。</li>
+      <li><b>深色主题与状态联动</b>：<code>index.json</code> 的 <code>skin.light / skin.dark</code> 均设为深色背景与浅色文字；<code>build_assets_bin.py</code> 会在打包时注入 <code>skin</code>，由 <code>assets.Apply()</code> 应用。</li>    </ul>
+    <div class="kpi">
+      <div><b>280 × 340</b>角色画布像素</div>
+      <div><b>31</b>表情条目（24 文件）</div>
+      <div><b>20 / 12 / 14</b>三组动画帧数 @ 90ms</div>
+      <div><b>7.90 MB</b>assets 包（8 MB 上限）</div>
+      <div><b>104 KiB</b>分区剩余余量</div>
+    </div>
+  </div>
+</div>
+
+<script>
+const EMO = ["angry","confident","confused","cool","crying","delicious","embarrassed",
+  "funny","happy","kissy","laughing","loving","neutral","relaxed","sad","shocked",
+  "silly","sleepy","surprised","thinking","winking"];
+const ANIM = ["idle","speaking","happy_anim"];
+const TALK = {
+  neutral:"你好，我是小智～有什么可以帮你的吗？",
+  happy:"太好了！这件事交给我吧～", laughing:"哈哈哈，这个笑话好好笑！",
+  sad:"唔……听起来有点难过呢。", crying:"别哭别哭，我在这里陪着你。",
+  angry:"这可有点让人生气了！", thinking:"让我想想……嗯，有个主意。",
+  surprised:"诶？！居然是这样吗？", sleepy:"哈……有点困了，Zzz…",
+  winking:"悄悄告诉你一个小秘密～", cool:"这种程度，轻松搞定。",
+  loving:"最喜欢和你聊天啦！", confused:"嗯？这里我没太听懂。",
+  speaking:"正在回答你的问题，头、发梢和手臂也会跟着轻轻摆动～", idle:"（待机中 · 头摆 / 发梢 / 双臂 / 呼吸眨眼）"
+};
+const role = document.getElementById('role');
+const meta = document.getElementById('meta');
+const emoName = document.getElementById('emoName');
+const caption = document.getElementById('caption');
+let current = 'idle';
+let timer = null;
+
+function show(name, isAnim){
+  current = name;
+  const file = 'assets/xiaozhi-live2d/' + name + (isAnim ? '.gif' : '.png');
+  role.src = file + '?t=' + Date.now();   // 强制重载 GIF，保证从头播放
+  emoName.textContent = name;
+  caption.textContent = TALK[name] || '（表情：' + name + '）';
+  meta.innerHTML = '当前：<code>' + name + (isAnim ? '.gif' : '.png') + '</code><br>' +
+    '尺寸：280 × 340 · ' + (isAnim ? '透明 GIF 动画' : 'RGBA PNG') + '<br>' +
+    '触发：<code>SetEmotion("' + name + '")</code>';
+  document.querySelectorAll('button').forEach(b => b.classList.toggle('on', b.dataset.name === name));
+}
+
+const ag = document.getElementById('animGrid');
+ANIM.forEach(n => {
+  const b = document.createElement('button');
+  b.className = 'anim'; b.dataset.name = n; b.textContent = n === 'idle' ? '待机 idle' :
+    (n === 'speaking' ? '说话 speaking' : '开心 happy_anim');
+  b.onclick = () => { stopAuto(); show(n, true); };
+  ag.appendChild(b);
+});
+const eg = document.getElementById('emoGrid');
+EMO.forEach(n => {
+  const b = document.createElement('button');
+  b.dataset.name = n; b.textContent = n;
+  b.onclick = () => { stopAuto(); show(n, false); };
+  eg.appendChild(b);
+});
+
+function stopAuto(){ document.getElementById('autoPlay').checked = false; clearInterval(timer); }
+document.getElementById('autoPlay').onchange = e => {
+  clearInterval(timer);
+  if(e.target.checked){
+    const seq = ['idle','speaking','happy','thinking','surprised','winking','sleepy'];
+    let i = 0;
+    const step = () => {
+      const n = seq[i++ % seq.length];
+      show(n, ANIM.includes(n));
+    };
+    step(); timer = setInterval(step, 2200);
+  }
+};
+show('idle', true);
+</script>
+</body>
+</html>

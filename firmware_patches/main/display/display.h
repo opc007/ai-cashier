@@ -44,6 +44,14 @@ public:
     virtual void ShowNotification(const char* notification, int duration_ms = 3000);
     virtual void ShowNotification(const std::string& notification, int duration_ms = 3000);
     virtual void SetEmotion(const char* emotion);
+    // v2.5.2 SetEmotion() is void and falls back to a font glyph, so the
+    // v2.5.3 `if (SetEmotion(name))` live2d check cannot be used. This returns
+    // true only when an emoji-collection image (PNG or GIF) was shown.
+    // Default is false; LcdDisplay implements it for the optional character module.
+    virtual bool SetEmojiEmotion(const char* emotion) {
+        (void)emotion;
+        return false;
+    }
     virtual void SetChatMessage(const char* role, const char* content);
     virtual void ClearChatMessages();
     virtual void SetTheme(Theme* theme);

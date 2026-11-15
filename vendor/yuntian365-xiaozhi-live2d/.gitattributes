@@ -1,0 +1,5 @@
+# Character art and GIFs must not be line-ending converted.
+*.png binary
+*.gif binary
+*.jpg binary
+*.jpeg binary

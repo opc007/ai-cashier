@@ -1,0 +1,129 @@
+{
+  "version": 1,
+  "emoji_collection": [
+    {
+      "name": "angry",
+      "file": "angry.png"
+    },
+    {
+      "name": "confident",
+      "file": "confident.png"
+    },
+    {
+      "name": "confused",
+      "file": "confused.png"
+    },
+    {
+      "name": "cool",
+      "file": "cool.png"
+    },
+    {
+      "name": "crying",
+      "file": "crying.png"
+    },
+    {
+      "name": "delicious",
+      "file": "delicious.png"
+    },
+    {
+      "name": "embarrassed",
+      "file": "embarrassed.png"
+    },
+    {
+      "name": "funny",
+      "file": "funny.png"
+    },
+    {
+      "name": "happy",
+      "file": "happy.png"
+    },
+    {
+      "name": "kissy",
+      "file": "kissy.png"
+    },
+    {
+      "name": "laughing",
+      "file": "laughing.png"
+    },
+    {
+      "name": "loving",
+      "file": "loving.png"
+    },
+    {
+      "name": "neutral",
+      "file": "neutral.png"
+    },
+    {
+      "name": "relaxed",
+      "file": "relaxed.png"
+    },
+    {
+      "name": "sad",
+      "file": "sad.png"
+    },
+    {
+      "name": "shocked",
+      "file": "shocked.png"
+    },
+    {
+      "name": "silly",
+      "file": "silly.png"
+    },
+    {
+      "name": "sleepy",
+      "file": "sleepy.png"
+    },
+    {
+      "name": "surprised",
+      "file": "surprised.png"
+    },
+    {
+      "name": "thinking",
+      "file": "thinking.png"
+    },
+    {
+      "name": "winking",
+      "file": "winking.png"
+    },
+    {
+      "name": "idle",
+      "file": "idle.gif"
+    },
+    {
+      "name": "speaking",
+      "file": "speaking.gif"
+    },
+    {
+      "name": "happy_anim",
+      "file": "happy_anim.gif"
+    },
+    {
+      "name": "warning",
+      "file": "confused.png"
+    },
+    {
+      "name": "cancel",
+      "file": "sad.png"
+    },
+    {
+      "name": "cloud_download",
+      "file": "thinking.png"
+    },
+    {
+      "name": "cloud_off",
+      "file": "sad.png"
+    },
+    {
+      "name": "link",
+      "file": "thinking.png"
+    },
+    {
+      "name": "download",
+      "file": "thinking.png"
+    },
+    {
+      "name": "gear",
+      "file": "thinking.png"
+    }
+  ]
+}

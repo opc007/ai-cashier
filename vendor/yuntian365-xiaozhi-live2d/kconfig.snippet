@@ -1,0 +1,13 @@
+# Optional. Paste into xiaozhi-esp32/main/Kconfig.projbuild if you want the
+# switch in menuconfig. Do not replace that file with this snippet.
+# The ai-cashier overlay also accepts CMake -DXIAOZHI_LIVE2D_CHARACTER=ON,
+# which does not require editing Kconfig.
+
+config XIAOZHI_LIVE2D_CHARACTER
+    bool "2D character idle/speaking GIFs (yuntian365 live2d)"
+    default n
+    help
+        Play the vendored idle.gif / speaking.gif pack from 云天's
+        xiaozhi-p4-dfrobot project. Off by default so the cashier UI
+        keeps the stock v2.5.2 emotions. See
+        vendor/yuntian365-xiaozhi-live2d/README.md.
